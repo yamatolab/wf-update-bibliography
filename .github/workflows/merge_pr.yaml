@@ -1,0 +1,18 @@
+on:
+  workflow_call:
+    secrets:
+      github_token:
+        required: true
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge bibliography updates
+        uses: squalrus/merge-bot@v0.4.5
+        with:
+          GITHUB_TOKEN: ${{ secrets.github_token }}
+          reviewers: false
+          labels: update-bibliography
+          method: squash
+          delete_source_branch: true
