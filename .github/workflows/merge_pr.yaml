@@ -1,8 +1,5 @@
 on:
   workflow_call:
-    secrets:
-      github_token:
-        required: true
 
 jobs:
   auto-merge:
@@ -11,7 +8,7 @@ jobs:
       - name: Merge bibliography updates
         uses: squalrus/merge-bot@v0.4.5
         with:
-          GITHUB_TOKEN: ${{ secrets.github_token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           reviewers: false
           labels: update-bibliography
           method: squash
