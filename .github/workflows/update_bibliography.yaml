@@ -1,0 +1,65 @@
+on:
+  workflow_call:
+    inputs:
+      zotero_group_id:
+        description: 'Zotero group ID'
+        required: true
+        type: string
+      bibliography_file:
+        description: 'Bibliography file path'
+        required: true
+        type: string
+    secrets:
+      zotero_api_key:
+        description: 'Zotero API key'
+        required: true
+      pat_for_create_pr:
+        description: 'Personal access token for create pull request'
+        required: true
+
+jobs:
+  update_bibliography:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Download bibliography
+      run: |
+        ZOTERO_BASE_URL="https://api.zotero.org"
+        ZOTERO_PAGE_LIMIT=100         # Max is 100
+        ZOTERO_SORT_ALGORITHM="title" # Recores are sorted by title
+        ZOTERO_SORT_DIRECTIOPN="asc"  # A to Z
+
+        TMP_DIR=$(mktemp -d)
+        
+        i=0
+        while true ;do
+            start=$((i*ZOTERO_PAGE_LIMIT))
+            bibfile=$TMP_DIR/${i}.bib
+            wget -O $bibfile \
+                -r \
+                --header="Authorization: Bearer ${ZOTERO_API_KEY}" \
+                --header="Zotero-API-Version: 3" \
+                "${ZOTERO_BASE_URL}/groups/${ZOTERO_GROUP_ID}/items?format=bibtex&start=${start}&limit=${ZOTERO_PAGE_LIMIT}&sort=${ZOTERO_SORT_ALGORITHM}&direction=${ZOTERO_SORT_DIRECTIOPN}"
+            if [ $(cat $bibfile | wc -l ) == 0 ]; then
+                break
+            fi
+            i=$((i+1))
+        done
+        
+        # Merge all files
+        cat $TMP_DIR/*.bib > $BIBLIOGRAPHY_FILE
+      env:
+        ZOTERO_API_KEY: ${{ secrets.zotero_api_key }}
+        ZOTERO_GROUP_ID: ${{ inputs.zotero_group_id }}
+        BIBLIOGRAPHY_FILE: ${{ inputs.bibliography_file }}
+    - name: Commit, push, and create pull request
+      uses: peter-evans/create-pull-request@v4
+      with:
+        token: ${{ secrets.pat_for_create_pr }}
+        commit-message: Update bibliography
+        branch: update-bibliography
+        title: Update bibliography
+        body: |
+            This pull request updates the bibliography.
+        labels: |
+            wf-update-bibliography
